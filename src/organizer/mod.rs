@@ -1,6 +1,6 @@
 use std::{collections::HashSet, fs, io::Result, path::Path, sync::mpsc};
 
-use crate::thread_pool::WorkerPool;
+use crate::{log_warn, thread_pool::WorkerPool};
 use file_ops::move_to_folder;
 
 pub mod file_ops;
@@ -50,6 +50,12 @@ mod classifier {
     }
 }
 
+fn is_hidden_file(path: &Path) -> bool {
+    path.file_name()
+        .and_then(|name| name.to_str())
+        .is_some_and(|name_str| name_str.starts_with('.'))
+}
+
 /// Organizes files by type (images, videos, etc.) and modified date
 /// Also detects duplicates based on file hash
 pub fn organize_files(folder_path: &Path) -> Result<()> {
@@ -64,11 +70,16 @@ pub fn organize_files(folder_path: &Path) -> Result<()> {
     let pool = WorkerPool::new(num_workers);
 
     for entry in all_files {
+        let entry = entry?;
+        let path = entry.path();
+
+        // skip hidden files
+        if is_hidden_file(&path) {
+            continue;
+        }
+
         let tx = tx.clone();
         pool.execute(move || {
-            let entry = entry.unwrap();
-            let path = entry.path();
-
             if path.is_file() {
                 std::thread::spawn(move || {
                     let hash = hasher::hash_file(&path).unwrap();
@@ -85,7 +96,7 @@ pub fn organize_files(folder_path: &Path) -> Result<()> {
         if path.is_file() {
             //  Step 1: Hash the file to check for duplicates
             if seen_hashes.contains(&hash) {
-                println!(" Duplicate found: {:?}", path.file_name().unwrap());
+                log_warn!(" Duplicate found: {:?}", path.file_name().unwrap());
                 move_to_folder(&path, folder_path, Some("duplicates"))?;
                 continue;
             } else {

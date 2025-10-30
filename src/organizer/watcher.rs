@@ -4,7 +4,7 @@ use notify::{
     event::ModifyKind, Config, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher,
 };
 
-use crate::organizer::organize_files;
+use crate::{log_error, log_info, organizer::organize_files};
 
 pub fn watch_folder(folder_path: &Path) -> Result<()> {
     // Create an mpsc channel to receive file system events
@@ -19,7 +19,7 @@ pub fn watch_folder(folder_path: &Path) -> Result<()> {
         .watch(Path::new(folder_path), RecursiveMode::NonRecursive)
         .expect("Failed to start watching folder");
 
-    println!("👀 Watching folder: {:?}", folder_path);
+    log_info!("Watching folder: {:?}", folder_path);
 
     // Loop to handle events
     for res in rx {
@@ -32,11 +32,11 @@ pub fn watch_folder(folder_path: &Path) -> Result<()> {
                 ) {
                     println!(" New file detected. Reorganizing...");
                     if let Err(e) = organize_files(folder_path) {
-                        eprintln!(" Error during reorganization: {:?}", e);
+                        log_error!(" Error during reorganization: {:?}", e);
                     }
                 }
             }
-            Err(e) => println!(" Watch error: {:?}", e),
+            Err(e) => log_error!("Watcher error: {:?}", e),
         }
     }
 

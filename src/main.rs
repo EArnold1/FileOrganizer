@@ -1,6 +1,7 @@
 mod cli;
 mod organizer;
 mod thread_pool;
+mod utils;
 
 use std::time::Instant;
 
@@ -21,10 +22,10 @@ fn main() -> std::io::Result<()> {
     organize_files(&folder_path)?;
     let end = start.elapsed();
 
-    println!("{:?}", end);
+    log_info!("{:?}", end);
 
     if watch_mode {
-        println!(
+        log_info!(
             "Watching for new files in {}",
             folder_path.to_str().unwrap()
         );
