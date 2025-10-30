@@ -4,6 +4,7 @@ use std::thread;
 use std::time::Instant;
 // Import standard library modules
 use blake3::Hasher;
+use chrono::{DateTime, Local, Utc};
 use std::fs::{File, ReadDir};
 use std::io::Read;
 use std::path::PathBuf;
@@ -65,12 +66,8 @@ fn organize_files(folder_path: &Path) -> io::Result<()> {
 
     let num_workers = num_cpus::get();
 
-    // let gap = all_files.
-    //
-
     let pool = WorkerPool::new(num_workers);
 
-    // for _ in 0..num_workers {
     for entry in all_files {
         let tx = tx.clone();
         pool.execute(move || {
@@ -118,11 +115,27 @@ fn organize_files(folder_path: &Path) -> io::Result<()> {
 
             let new_path = Path::new(folder_path).join(target_folder);
 
-            move_to_folder(&path, &new_path, None)?;
+            let age_category = classify_file_age(&path)?;
+
+            move_to_folder(&path, &new_path, age_category)?;
         }
     }
 
     Ok(())
+}
+
+fn classify_file_age(path: &Path) -> Result<Option<&str>, io::Error> {
+    let now: DateTime<Local> = Utc::now().into();
+    let modified_date: DateTime<Local> = fs::metadata(path)?.modified()?.into();
+    let age = now - modified_date;
+
+    let category = match age.num_days() {
+        days if days >= 60 => Some("60_days_or_older"),
+        30..=59 => Some("30_to_59_days_old"),
+        _ => None,
+    };
+
+    Ok(category)
 }
 
 /// Moves a file into its destination folder
