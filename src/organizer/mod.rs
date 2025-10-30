@@ -11,11 +11,10 @@ mod hasher {
 
     use blake3::Hasher;
 
-    /// Hash the contents of a file using blake3
-    /// Used to detect duplicates
+    /// Computes the BLAKE3 hash of a file's contents.
     pub fn hash_file(path: &Path) -> Result<String> {
         let mut file = File::open(path)?;
-        let mut hasher = Hasher::new(); // using blake3 because it non-cryptographic, meaning it is faster compared to Sha:256
+        let mut hasher = Hasher::new(); // using blake3 because it non-cryptographic, meaning it is faster compared to SHA256
         let mut buffer = [0u8; 8192];
 
         loop {
@@ -35,14 +34,15 @@ mod classifier {
 
     use chrono::{DateTime, Local};
 
+    /// Classifies a file's age based on its modification date.
     pub fn classify_file_age(path: &Path) -> Result<Option<&str>> {
         let now = Local::now();
         let modified_date: DateTime<Local> = fs::metadata(path)?.modified()?.into();
         let age = now - modified_date;
 
         let category = match age.num_days() {
-            (8_i64..=30_i64) => Some("Previous_30_days"),
-            (31..60) => Some("Previous_60_days"),
+            (8_i64..=30_i64) => Some("past_30_days"),
+            rng if rng >= 60 => Some("past_60_days"),
             _ => None,
         };
 
@@ -50,14 +50,15 @@ mod classifier {
     }
 }
 
+/// Checks if a file is hidden.
 fn is_hidden_file(path: &Path) -> bool {
     path.file_name()
         .and_then(|name| name.to_str())
         .is_some_and(|name_str| name_str.starts_with('.'))
 }
 
-/// Organizes files by type (images, videos, etc.) and modified date
-/// Also detects duplicates based on file hash
+/// Organizes files in a folder by classifying them into categories like type and age.
+/// It also detects and separates duplicate files based on their hash.
 pub fn organize_files(folder_path: &Path) -> Result<()> {
     let all_files = fs::read_dir(folder_path)?; // Read all entries in the directory
 
@@ -96,7 +97,7 @@ pub fn organize_files(folder_path: &Path) -> Result<()> {
         if path.is_file() {
             //  Step 1: Hash the file to check for duplicates
             if seen_hashes.contains(&hash) {
-                log_warn!(" Duplicate found: {:?}", path.file_name().unwrap());
+                log_warn!("Duplicate found: {:?}", path.file_name().unwrap());
                 move_to_folder(&path, folder_path, Some("duplicates"))?;
                 continue;
             } else {

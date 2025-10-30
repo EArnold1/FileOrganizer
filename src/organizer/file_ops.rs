@@ -2,8 +2,13 @@ use std::{fs, io::Result, path::Path};
 
 use crate::log_info;
 
-/// Moves a file into its destination folder
-/// If folder doesn’t exist, it creates it
+/// Moves a file to a specified folder, creating the folder if it doesn't exist.
+///
+/// # Arguments
+///
+/// * `path` - The path to the file to be moved.
+/// * `base_folder` - The base destination folder.
+/// * `subfolder` - An optional subfolder within the base folder.
 pub fn move_to_folder(path: &Path, base_folder: &Path, subfolder: Option<&str>) -> Result<()> {
     let mut path_for_new_folder = base_folder.to_path_buf();
 
@@ -21,7 +26,7 @@ pub fn move_to_folder(path: &Path, base_folder: &Path, subfolder: Option<&str>) 
     // Only move if file doesn’t already exist in destination
     if !new_location.exists() {
         fs::rename(path, &new_location)?;
-        log_info!(" Moved {:?} → {:?}", file_name, new_location);
+        log_info!("Moved {:?} → {:?}", file_name, new_location);
     }
     Ok(())
 }
